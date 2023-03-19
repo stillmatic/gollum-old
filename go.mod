@@ -3,6 +3,7 @@ module github.com/stillmatic/go-llm-react
 go 1.20
 
 require (
+	github.com/PullRequestInc/go-gpt3 v1.1.13 // indirect
 	github.com/antonmedv/expr v1.12.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

@@ -1,149 +1,109 @@
 package react
 
 import (
-	"encoding/json"
+	"context"
+	_ "embed"
 	"errors"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
+	"fmt"
 	"time"
 
-	"github.com/antonmedv/expr"
+	"github.com/PullRequestInc/go-gpt3"
 )
 
-type Tool struct {
-	// Name is the name of the tool, will be used for lookup
-	Name string
-	// Description is a short description of the tool with usage info
-	Description string
-	// Run is the function that will be called when the tool is invoked
-	Run func(arg string) (string, error)
+const (
+	RoleSystem    = "system"
+	RoleUser      = "user"
+	RoleAssistant = "assistant"
+)
+
+type ReactAgent struct {
+	Client        gpt3.Client
+	Registry      *ToolRegistry
+	Conversations map[string]*Conversation
+	MaxTurns      int
 }
 
-// WikipediaResult is the result of a Wikipedia search
-type WikipediaResult struct {
-	Batchcomplete string `json:"batchcomplete"`
-	Continue      struct {
-		Sroffset int    `json:"sroffset"`
-		Continue string `json:"continue"`
-	} `json:"continue"`
-	Query struct {
-		Searchinfo struct {
-			Totalhits         int    `json:"totalhits"`
-			Suggestion        string `json:"suggestion"`
-			Suggestionsnippet string `json:"suggestionsnippet"`
-		} `json:"searchinfo"`
-		Search []struct {
-			Ns        int       `json:"ns"`
-			Title     string    `json:"title"`
-			Pageid    int       `json:"pageid"`
-			Size      int       `json:"size"`
-			Wordcount int       `json:"wordcount"`
-			Snippet   string    `json:"snippet"`
-			Timestamp time.Time `json:"timestamp"`
-		} `json:"search"`
-	} `json:"query"`
+type Conversation struct {
+	Messages []gpt3.ChatCompletionRequestMessage
 }
 
-// RunWikipedia queries Wikipedia for the given search term and returns the
-// snippet of the first result
-func RunWikipedia(arg string) (string, error) {
-	var result WikipediaResult
-	queryParams := url.Values{
-		"action":   []string{"query"},
-		"list":     []string{"search"},
-		"srsearch": []string{arg},
-		"format":   []string{"json"},
-	}
-	resp, err := http.Get("http://en.wikipedia.org/w/api.php?" + queryParams.Encode())
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
-	}
-	if len(result.Query.Search) == 0 {
-		return "", errors.New("no results")
-	}
-	return result.Query.Search[0].Snippet, nil
+//go:embed prompt.txt
+var initialPrompt string
 
-}
-
-// RunCalculator evaluates  mathematical expressions and returns the result.
-// Internally, this uses the `expr` package to avoid arbitrary code execution.
-func RunCalculator(arg string) (string, error) {
-	env := map[string]interface{}{}
-	program, err := expr.Compile(arg, expr.Env(env))
-	if err != nil {
-		return "", err
-	}
-	output, err := expr.Run(program, nil)
-	if err != nil {
-		return "", err
-	}
-	switch t := output.(type) {
-	case string:
-		return t, nil
-	case int:
-		return strconv.Itoa(t), nil
-	case float64:
-		return strconv.FormatFloat(t, 'f', -1, 64), nil
-	default:
-		return "", errors.New("invalid output")
+func NewReactAgent(client gpt3.Client, registry *ToolRegistry) *ReactAgent {
+	return &ReactAgent{
+		Client:        client,
+		Registry:      registry,
+		Conversations: make(map[string]*Conversation),
+		MaxTurns:      6,
 	}
 }
 
-var WikipediaTool = Tool{
-	Name:        "wikipedia",
-	Description: "Search Wikipedia for the given term and return the first result",
-	Run:         RunWikipedia,
-}
-
-var CalculatorTool = Tool{
-	Name:        "calculator",
-	Description: "Evaluate mathematical expressions",
-	Run:         RunCalculator,
-}
-
-type ToolRegistry struct {
-	tools map[string]Tool
-}
-
-func NewToolRegistry() *ToolRegistry {
-	return &ToolRegistry{
-		tools: map[string]Tool{
-			"wikipedia":  WikipediaTool,
-			"calculator": CalculatorTool,
+func (a *ReactAgent) NewConversation(name string) {
+	conv := &Conversation{
+		Messages: []gpt3.ChatCompletionRequestMessage{
+			{
+				Role:    RoleSystem,
+				Content: initialPrompt,
+			},
 		},
 	}
+	a.Conversations[name] = conv
 }
 
-// Run finds the last line in the given string starting with "Action",
-// extracts the tool name and runs the tool with the rest of the line as
-// argument.
-func (r *ToolRegistry) Run(arg string) (string, error) {
-	lines := strings.Split(arg, "\n")
-	var line string
-	for i := len(lines) - 1; i >= 0; i-- {
-		currLine := strings.TrimSpace(lines[i])
-		if strings.HasPrefix(currLine, "Action") {
-			line = currLine
+func (a *ReactAgent) Speak(ctx context.Context, conversationName string, prompt string) error {
+	conv, ok := a.Conversations[conversationName]
+	if !ok {
+		return errors.New("conversation not found")
+	}
+	conv.Messages = append(conv.Messages, gpt3.ChatCompletionRequestMessage{
+		Role:    RoleUser,
+		Content: prompt,
+	})
+	for {
+		if len(conv.Messages) >= a.MaxTurns {
+			break
+		}
+		done, err := a.speak(ctx, conv)
+		if err != nil {
+			return err
+		}
+		if done {
 			break
 		}
 	}
-	if line == "" {
-		return "", errors.New("no Action command found")
-	}
-	parts := strings.SplitN(strings.TrimSpace(line), " ", 3)
-	if len(parts) < 3 {
-		return "", errors.New("invalid Action command")
-	}
-	tool, ok := r.tools[strings.Trim(strings.ToLower(strings.TrimSpace(parts[1])), ":")]
-	if !ok {
-		return "", errors.New("unknown tool")
-	}
-	return tool.Run(strings.TrimSpace(parts[2]))
+	return nil
+}
 
+func (a *ReactAgent) speak(ctx context.Context, conv *Conversation) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	resp, err := a.Client.ChatCompletion(ctx, gpt3.ChatCompletionRequest{
+		Model:     gpt3.GPT3Dot5Turbo,
+		Messages:  conv.Messages,
+		MaxTokens: 256,
+		Stop:      []string{"PAUSE"},
+	})
+	if err != nil {
+		return false, err
+	}
+	respMessage := resp.Choices[0].Message.Content
+	fmt.Print(respMessage)
+	conv.Messages = append(conv.Messages, gpt3.ChatCompletionRequestMessage{
+		Role:    RoleAssistant,
+		Content: respMessage,
+	})
+	obs, err := a.Registry.Run(respMessage)
+	if err != nil {
+		if errors.Is(err, ErrNoActionFound) {
+			return true, nil
+		}
+		return false, err
+	}
+	fmt.Print("Observation: " + obs)
+	conv.Messages = append(conv.Messages, gpt3.ChatCompletionRequestMessage{
+		Role:    RoleSystem,
+		Content: "Observation: " + obs,
+	})
+	return false, nil
 }
