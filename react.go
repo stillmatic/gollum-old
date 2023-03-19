@@ -1,10 +1,11 @@
-package react
+package gollum
 
 import (
 	"context"
 	_ "embed"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/PullRequestInc/go-gpt3"
@@ -24,7 +25,8 @@ type ReactAgent struct {
 }
 
 type Conversation struct {
-	Messages []gpt3.ChatCompletionRequestMessage
+	Messages  []gpt3.ChatCompletionRequestMessage
+	CurrReply *strings.Builder
 }
 
 //go:embed prompt.txt
@@ -35,7 +37,7 @@ func NewReactAgent(client gpt3.Client, registry *ToolRegistry) *ReactAgent {
 		Client:        client,
 		Registry:      registry,
 		Conversations: make(map[string]*Conversation),
-		MaxTurns:      6,
+		MaxTurns:      10,
 	}
 }
 
@@ -47,6 +49,7 @@ func (a *ReactAgent) NewConversation(name string) {
 				Content: initialPrompt,
 			},
 		},
+		CurrReply: &strings.Builder{},
 	}
 	a.Conversations[name] = conv
 }
@@ -62,6 +65,7 @@ func (a *ReactAgent) Speak(ctx context.Context, conversationName string, prompt 
 	})
 	for {
 		if len(conv.Messages) >= a.MaxTurns {
+			fmt.Println("Max turns reached")
 			break
 		}
 		done, err := a.speak(ctx, conv)
@@ -75,20 +79,27 @@ func (a *ReactAgent) Speak(ctx context.Context, conversationName string, prompt 
 	return nil
 }
 
+func (c *Conversation) onData(data *gpt3.ChatCompletionStreamResponse) {
+	msg := data.Choices[0].Delta.Content
+	c.CurrReply.WriteString(msg)
+	fmt.Print(msg)
+}
+
 func (a *ReactAgent) speak(ctx context.Context, conv *Conversation) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	resp, err := a.Client.ChatCompletion(ctx, gpt3.ChatCompletionRequest{
-		Model:     gpt3.GPT3Dot5Turbo,
-		Messages:  conv.Messages,
-		MaxTokens: 256,
-		Stop:      []string{"PAUSE"},
-	})
+	err := a.Client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
+		Model:       gpt3.GPT3Dot5Turbo,
+		Messages:    conv.Messages,
+		MaxTokens:   256,
+		Temperature: 0,
+		Stop:        []string{"PAUSE"},
+	}, conv.onData)
 	if err != nil {
 		return false, err
 	}
-	respMessage := resp.Choices[0].Message.Content
-	fmt.Print(respMessage)
+	respMessage := conv.CurrReply.String()
+	conv.CurrReply.Reset()
 	conv.Messages = append(conv.Messages, gpt3.ChatCompletionRequestMessage{
 		Role:    RoleAssistant,
 		Content: respMessage,
@@ -100,7 +111,7 @@ func (a *ReactAgent) speak(ctx context.Context, conv *Conversation) (bool, error
 		}
 		return false, err
 	}
-	fmt.Print("Observation: " + obs)
+	fmt.Println("\nObservation: " + obs)
 	conv.Messages = append(conv.Messages, gpt3.ChatCompletionRequestMessage{
 		Role:    RoleSystem,
 		Content: "Observation: " + obs,

@@ -1,14 +1,14 @@
-package react_test
+package gollum_test
 
 import (
 	"testing"
 
-	react "github.com/stillmatic/go-llm-react"
+	"github.com/stillmatic/gollum"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestReact(t *testing.T) {
-	reg := react.NewToolRegistry()
+	reg := gollum.NewToolRegistry()
 	resp, err := reg.Run(`Question: What does England share borders with?
 Thought: I should list down the neighboring countries of England
 Action: wikipedia: England

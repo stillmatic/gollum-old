@@ -1,4 +1,4 @@
-package react
+package gollum
 
 import (
 	"encoding/json"

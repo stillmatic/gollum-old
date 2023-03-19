@@ -1,4 +1,4 @@
-package react_test
+package gollum_test
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/PullRequestInc/go-gpt3"
-	react "github.com/stillmatic/go-llm-react"
+	"github.com/stillmatic/gollum"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,13 +15,13 @@ const (
 )
 
 func TestReactEndToEnd(t *testing.T) {
-	reg := react.NewToolRegistry()
+	reg := gollum.NewToolRegistry()
 	apiKey := os.Getenv("OPENAI_KEY")
 	if apiKey == "" {
 		t.Fatal("OPENAI_KEY is not set")
 	}
 	aiClient := gpt3.NewClient(apiKey)
-	r := react.NewReactAgent(aiClient, reg)
+	r := gollum.NewReactAgent(aiClient, reg)
 	r.NewConversation(testConvoName)
 	ctx := context.Background()
 	err := r.Speak(ctx, testConvoName, "Question: What does England share borders with?")
