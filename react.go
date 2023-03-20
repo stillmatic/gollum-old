@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/PullRequestInc/go-gpt3"
+	"github.com/stillmatic/gollum/tools"
 )
 
 const (
@@ -19,7 +20,7 @@ const (
 
 type ReactAgent struct {
 	Client        gpt3.Client
-	Registry      *ToolRegistry
+	Registry      *tools.ToolRegistry
 	Conversations map[string]*Conversation
 	MaxTurns      int
 }
@@ -32,7 +33,7 @@ type Conversation struct {
 //go:embed prompt.txt
 var initialPrompt string
 
-func NewReactAgent(client gpt3.Client, registry *ToolRegistry) *ReactAgent {
+func NewReactAgent(client gpt3.Client, registry *tools.ToolRegistry) *ReactAgent {
 	return &ReactAgent{
 		Client:        client,
 		Registry:      registry,
@@ -92,7 +93,7 @@ func (a *ReactAgent) speak(ctx context.Context, conv *Conversation) (bool, error
 		Model:       gpt3.GPT3Dot5Turbo,
 		Messages:    conv.Messages,
 		MaxTokens:   256,
-		Temperature: 0,
+		Temperature: 1,
 		Stop:        []string{"PAUSE"},
 	}, conv.onData)
 	if err != nil {
@@ -105,16 +106,19 @@ func (a *ReactAgent) speak(ctx context.Context, conv *Conversation) (bool, error
 		Content: respMessage,
 	})
 	obs, err := a.Registry.Run(respMessage)
+	var nextMessage string
 	if err != nil {
-		if errors.Is(err, ErrNoActionFound) {
+		if errors.Is(err, tools.ErrNoActionFound) {
 			return true, nil
 		}
-		return false, err
+		nextMessage = "\nOops: " + err.Error() + ", available tools are: " + a.Registry.AvailableTools() + "\n"
+	} else {
+		nextMessage = "\nObservation: " + obs
 	}
-	fmt.Println("\nObservation: " + obs)
+	fmt.Println(nextMessage)
 	conv.Messages = append(conv.Messages, gpt3.ChatCompletionRequestMessage{
 		Role:    RoleSystem,
-		Content: "Observation: " + obs,
+		Content: nextMessage,
 	})
 	return false, nil
 }
