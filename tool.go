@@ -68,8 +68,10 @@ func RunWikipedia(arg string) (string, error) {
 	if len(result.Query.Search) == 0 {
 		return "", errors.New("no results")
 	}
-	return result.Query.Search[0].Snippet, nil
-
+	snippet := result.Query.Search[0].Snippet
+	snippet = strings.Replace(snippet, "<span class=\"searchmatch\">", "", -1)
+	snippet = strings.Replace(snippet, "</span>", "", -1)
+	return snippet, nil
 }
 
 // RunCalculator evaluates  mathematical expressions and returns the result.
