@@ -111,7 +111,7 @@ func (a *ReactAgent) speak(ctx context.Context, conv *Conversation) (bool, error
 		if errors.Is(err, tools.ErrNoActionFound) {
 			return true, nil
 		}
-		nextMessage = "\nOops: " + err.Error() + ", available tools are: " + a.Registry.AvailableTools() + "\n"
+		nextMessage = "\nOops: " + err.Error() + ", available tools are: " + a.Registry.AvailableTools()
 	} else {
 		nextMessage = "\nObservation: " + obs
 	}

@@ -60,11 +60,19 @@ func setupSQL(t *testing.T) tools.Tool {
 	return SQLTool
 }
 
-func TestWikipediaEndToEnd(t *testing.T) {
+func TestWikipedia(t *testing.T) {
 	r := setupAgent(t)
 	r.NewConversation(testConvoName)
 	ctx := context.Background()
 	err := r.Speak(ctx, testConvoName, "Question: What does England share borders with?")
+	assert.NoError(t, err)
+}
+
+func TestCalculator(t *testing.T) {
+	r := setupAgent(t)
+	r.NewConversation(testConvoName)
+	ctx := context.Background()
+	err := r.Speak(ctx, testConvoName, "Question: What is 2 + 2?")
 	assert.NoError(t, err)
 }
 
