@@ -2,7 +2,7 @@
 
 An implementation of the [reAct](https://arxiv.org/pdf/2210.03629.pdf) paradigm in Golang. Heavily inspired by Simon Willison's [implementation in Python](https://til.simonwillison.net/llms/python-react-pattern).
 
-Easily allow your LLM to use tools:
+Easily empower your LLM to use tools:
 
 ```
 Thought: I think I remember the countries that England shares borders with, but I should double-check to be sure.
@@ -12,7 +12,8 @@ Thought: Ok, so England shares borders with Wales and Scotland, and has the Iris
 Answer: England shares borders with Wales and Scotland, and has the Irish Sea to the northwest.
 ```
 
-Error handling is supported:
+And to self recover from errors:
+
 ```
 Question: what is 2 + 2?
 Thought: This is a simple calculation that I can solve using the calculate action.
@@ -28,11 +29,15 @@ We strive to use pure Go, allowing for cross-platform builds and portability.
 
 # Supported Tools
 
-Implementations exist for 
+Implementations exist for:
 
-1. `calculator`: passes calculations to [`expr`](https://github.com/antonmedv/expr). These are sandboxed and safe to run, unlike `eval` in Python.
+1. `calc`: passes calculations to [`expr`](https://github.com/antonmedv/expr). These are sandboxed and safe to run, unlike `eval` in Python.
 2. `wikipedia`: returns a snippet from the first Wikipedia search result for a given item.
 
 Some tools require 'state' and are a bit more complicated to use.
 
-1. SQL: this is an interface in front of Go's [`database/sql`](https://pkg.go.dev/database/sql) interface. It requires a [`db`](https://pkg.go.dev/database/sql#DB) object to be instantiated. See the tests for an example - the overall result should work with [any Go package](https://github.com/golang/go/wiki/SQLDrivers) that implements the `driver` interface.
+1. `sql`: this is an interface in front of Go's [`database/sql`](https://pkg.go.dev/database/sql) interface. It requires a [`db`](https://pkg.go.dev/database/sql#DB) object to be instantiated. See the tests for an example - the overall result should work with [any Go package](https://github.com/golang/go/wiki/SQLDrivers) that implements the `driver` interface.
+
+We also have some special built-in 'tools.' 
+
+1. `help`: returns the description for the requested tool.

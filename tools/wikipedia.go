@@ -10,9 +10,10 @@ import (
 )
 
 var WikipediaTool = Tool{
-	Name:        "wikipedia",
-	Description: "Search Wikipedia for the given term and return the first result",
-	Run:         RunWikipedia,
+	Name: "wikipedia",
+	Description: `Search Wikipedia for the given term and return the first result
+Usage: wikipedia <term>	`,
+	Run: RunWikipedia,
 }
 
 // WikipediaResult is the result of a Wikipedia search

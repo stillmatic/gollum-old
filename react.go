@@ -42,12 +42,19 @@ func NewReactAgent(client gpt3.Client, registry *tools.ToolRegistry) *ReactAgent
 	}
 }
 
+func (a *ReactAgent) GetPrompt() string {
+	sb := &strings.Builder{}
+	sb.WriteString(initialPrompt)
+	sb.WriteString(a.Registry.GetPrompt())
+	return sb.String()
+}
+
 func (a *ReactAgent) NewConversation(name string) {
 	conv := &Conversation{
 		Messages: []gpt3.ChatCompletionRequestMessage{
 			{
 				Role:    RoleSystem,
-				Content: initialPrompt,
+				Content: a.GetPrompt(),
 			},
 		},
 		CurrReply: &strings.Builder{},
@@ -87,7 +94,7 @@ func (c *Conversation) onData(data *gpt3.ChatCompletionStreamResponse) {
 }
 
 func (a *ReactAgent) speak(ctx context.Context, conv *Conversation) (bool, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	err := a.Client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
 		Model:       gpt3.GPT3Dot5Turbo,

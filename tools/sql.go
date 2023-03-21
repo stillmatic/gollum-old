@@ -9,7 +9,14 @@ type SQLToolRunner struct {
 	db *sql.DB
 }
 
-func QueryResultToString(resp *sql.Rows) (string, error) {
+// queryResultToString converts the given sql.Rows to a string
+// with the following format:
+// col1,col2,col3
+// ------
+// val1,val2,val3
+// val1,val2,val3
+// ...
+func queryResultToString(resp *sql.Rows) (string, error) {
 	defer resp.Close()
 	sb := strings.Builder{}
 	// append columns
@@ -51,14 +58,17 @@ func QueryResultToString(resp *sql.Rows) (string, error) {
 	return sb.String(), nil
 }
 
+// Run executes the given SQL query and returns the result.
 func (r *SQLToolRunner) Run(arg string) (string, error) {
 	resp, err := r.db.Query(arg)
 	if err != nil {
 		return "", err
 	}
-	return QueryResultToString(resp)
+	return queryResultToString(resp)
 }
 
+// NewSQLToolRunner creates a new SQLToolRunner.
+// The given database connection will be used to execute the queries.
 func NewSQLToolRunner(db *sql.DB) *SQLToolRunner {
 	return &SQLToolRunner{
 		db: db,

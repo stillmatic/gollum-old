@@ -34,11 +34,29 @@ func (r *ToolRegistry) Register(tool Tool) {
 func (r *ToolRegistry) AvailableTools() string {
 	tools := make([]string, len(r.tools))
 	i := 0
-	for tool, _ := range r.tools {
+	for tool := range r.tools {
 		tools[i] = tool
 		i++
 	}
 	return strings.Join(tools, ", ")
+}
+
+func (r *ToolRegistry) GetPrompt() string {
+	sb := strings.Builder{}
+	for toolName, tool := range r.tools {
+		sb.WriteString(toolName + "\n")
+		sb.WriteString(tool.Description + "\n")
+	}
+	return sb.String()
+}
+
+// Help is a special tool which returns the description of the given tool.
+func (r *ToolRegistry) Help(toolName string) (string, error) {
+	tool, ok := r.tools[strings.ToLower(toolName)]
+	if !ok {
+		return "", ErrToolNotFound
+	}
+	return tool.Description, nil
 }
 
 var (
@@ -67,7 +85,14 @@ func (r *ToolRegistry) Run(arg string) (string, error) {
 	if len(parts) < 3 {
 		return "", ErrInvalidAction
 	}
-	tool, ok := r.tools[strings.Trim(strings.ToLower(strings.TrimSpace(parts[1])), ":")]
+	toolName := strings.Trim(strings.ToLower(strings.TrimSpace(parts[1])), ":")
+	if toolName == "" {
+		return "", ErrInvalidAction
+	}
+	if toolName == "help" {
+		return r.Help(parts[2])
+	}
+	tool, ok := r.tools[toolName]
 	if !ok {
 		return "", ErrToolNotFound
 	}

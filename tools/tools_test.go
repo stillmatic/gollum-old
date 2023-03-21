@@ -1,6 +1,7 @@
 package tools_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stillmatic/gollum/tools"
@@ -22,4 +23,17 @@ Action: calculator: (6 * 70) / 5
 PAUSE`)
 	assert.NoError(t, err)
 	assert.Equal(t, `84`, resp)
+}
+
+func TestAddTool(t *testing.T) {
+	reg := tools.NewToolRegistry()
+	assert.Equal(t, 2, len(strings.Split(reg.AvailableTools(), ",")))
+	reg.Register(tools.Tool{
+		Name:        "test",
+		Description: "test",
+		Run: func(arg string) (string, error) {
+			return arg, nil
+		},
+	})
+	assert.Equal(t, 3, len(strings.Split(reg.AvailableTools(), ",")))
 }

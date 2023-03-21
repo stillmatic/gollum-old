@@ -8,9 +8,10 @@ import (
 )
 
 var CalculatorTool = Tool{
-	Name:        "calculator",
-	Description: "Evaluate mathematical expressions",
-	Run:         RunCalculator,
+	Name: "calc",
+	Description: `Evaluate mathematical expressions.
+Usage: calc <expression>`,
+	Run: RunCalculator,
 }
 
 // RunCalculator evaluates  mathematical expressions and returns the result.

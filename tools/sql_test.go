@@ -64,4 +64,11 @@ Johnson,1,
 Smith,2,
 Williams,1,
 `, resp)
+
+	resp, err = sqlTool.Run("DROP TABLE customers")
+	assert.NoError(t, err)
+	assert.Equal(t, `Error: near "DROP": syntax error`, resp)
+	resp, err = sqlTool.Run("SELECT * FROM customers")
+	assert.NoError(t, err)
+	assert.Contains(t, resp, `4`)
 }
