@@ -27,6 +27,20 @@ func NewToolRegistry() *ToolRegistry {
 	}
 }
 
+func (r *ToolRegistry) Register(tool Tool) {
+	r.tools[strings.ToLower(tool.Name)] = tool
+}
+
+func (r *ToolRegistry) AvailableTools() string {
+	tools := make([]string, len(r.tools))
+	i := 0
+	for tool, _ := range r.tools {
+		tools[i] = tool
+		i++
+	}
+	return strings.Join(tools, ", ")
+}
+
 var (
 	ErrToolNotFound  = errors.New("tool not found")
 	ErrNoActionFound = errors.New("no Action command found")
@@ -57,15 +71,6 @@ func (r *ToolRegistry) Run(arg string) (string, error) {
 	if !ok {
 		return "", ErrToolNotFound
 	}
+	// call tool only with parts after the tool name
 	return tool.Run(strings.TrimSpace(parts[2]))
-}
-
-func (r *ToolRegistry) AvailableTools() string {
-	tools := make([]string, len(r.tools))
-	i := 0
-	for tool, _ := range r.tools {
-		tools[i] = tool
-		i++
-	}
-	return strings.Join(tools, ", ")
 }
