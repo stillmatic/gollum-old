@@ -2,7 +2,9 @@ package tools_test
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	_ "embed"
@@ -30,13 +32,34 @@ func setup(t *testing.T) tools.Tool {
 	}
 	assert.Equal(t, 4, i)
 
+	sb := &strings.Builder{}
+	sb.WriteString("Run SQL queries. Available schemas:\n")
+
 	sqliteToolRunner := tools.NewSQLToolRunner(db)
 	resp, err := sqliteToolRunner.Run("SELECT sql FROM sqlite_master WHERE type='table' and name NOT LIKE 'sqlite_%' ORDER BY name")
 	assert.NoError(t, err)
+	sb.WriteString(resp + "\n")
+
+	tableResp, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' and name NOT LIKE 'sqlite_%' ORDER BY name")
+	assert.NoError(t, err)
+	tables := make([]string, 0)
+	for tableResp.Next() {
+		var name string
+		err = tableResp.Scan(&name)
+		assert.NoError(t, err)
+		tables = append(tables, name)
+	}
+	sb.WriteString("Sample data for each table:\n")
+	for _, table := range tables {
+		// NB: do not use this in production, vulnerable to SQL injection
+		tableResp, err := sqliteToolRunner.Run(fmt.Sprintf("SELECT * FROM %s LIMIT 3'", table))
+		assert.NoError(t, err)
+		sb.WriteString(tableResp + "\n")
+	}
 
 	SQLTool := tools.Tool{
 		Name:        "sql",
-		Description: "Run SQL queries. Available schemas: " + resp,
+		Description: sb.String(),
 		Run:         sqliteToolRunner.Run,
 	}
 

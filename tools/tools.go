@@ -20,10 +20,7 @@ type ToolRegistry struct {
 
 func NewToolRegistry() *ToolRegistry {
 	return &ToolRegistry{
-		tools: map[string]Tool{
-			"wikipedia":  WikipediaTool,
-			"calculator": CalculatorTool,
-		},
+		tools: make(map[string]Tool),
 	}
 }
 

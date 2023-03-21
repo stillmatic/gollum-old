@@ -26,6 +26,8 @@ func setupAgent(t *testing.T) *gollum.ReactAgent {
 	}
 	aiClient := gpt3.NewClient(apiKey)
 	r := gollum.NewReactAgent(aiClient, reg)
+	r.Registry.Register(tools.CalculatorTool)
+	r.Registry.Register(tools.WikipediaTool)
 	return r
 }
 
@@ -72,7 +74,7 @@ func TestCalculator(t *testing.T) {
 	r := setupAgent(t)
 	r.NewConversation(testConvoName)
 	ctx := context.Background()
-	err := r.Speak(ctx, testConvoName, "Question: What is 2 + 2?")
+	err := r.Speak(ctx, testConvoName, "Question: What is 3 squared?")
 	assert.NoError(t, err)
 }
 
@@ -82,6 +84,6 @@ func TestSQL(t *testing.T) {
 	r.Registry.Register(sqlTool)
 	r.NewConversation(testConvoName)
 	ctx := context.Background()
-	err := r.Speak(ctx, testConvoName, "Question: How many customers do we have?")
+	err := r.Speak(ctx, testConvoName, "Question: How many customers have ordered anything?")
 	assert.NoError(t, err)
 }

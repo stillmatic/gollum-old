@@ -1,6 +1,6 @@
 # GoLLuM
 
-An implementation of the [reAct](https://arxiv.org/pdf/2210.03629.pdf) paradigm in Golang. Heavily inspired by Simon Willison's [implementation in Python](https://til.simonwillison.net/llms/python-react-pattern).
+An implementation of the [ReAct](https://arxiv.org/pdf/2210.03629.pdf) paradigm in Golang. Heavily inspired by Simon Willison's [implementation in Python](https://til.simonwillison.net/llms/python-react-pattern).
 
 Easily empower your LLM to use tools:
 
@@ -36,7 +36,7 @@ Implementations exist for:
 
 Some tools require 'state' and are a bit more complicated to use.
 
-1. `sql`: this is an interface in front of Go's [`database/sql`](https://pkg.go.dev/database/sql) interface. It requires a [`db`](https://pkg.go.dev/database/sql#DB) object to be instantiated. See the tests for an example - the overall result should work with [any Go package](https://github.com/golang/go/wiki/SQLDrivers) that implements the `driver` interface.
+1. `sql`: this is an interface in front of Go's [`database/sql`](https://pkg.go.dev/database/sql) interface. It requires a [`db`](https://pkg.go.dev/database/sql#DB) object to be instantiated. See the tests for an example - the overall result should work with [any Go package](https://github.com/golang/go/wiki/SQLDrivers) that implements the `driver` interface. Per [Rajkumar et al](https://arxiv.org/abs/2204.00498) (2023) - we provide the CTAS schema and sample data as input.
 
 We also have some special built-in 'tools.' 
 

@@ -8,8 +8,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReact(t *testing.T) {
+func setupRegistry(t *testing.T) *tools.ToolRegistry {
+	t.Helper()
 	reg := tools.NewToolRegistry()
+	reg.Register(tools.CalculatorTool)
+	reg.Register(tools.WikipediaTool)
+	return reg
+}
+
+func TestReact(t *testing.T) {
+	reg := setupRegistry(t)
 	resp, err := reg.Run(`Question: What does England share borders with?
 Thought: I should list down the neighboring countries of England
 Action: wikipedia: England
@@ -26,7 +34,7 @@ PAUSE`)
 }
 
 func TestAddTool(t *testing.T) {
-	reg := tools.NewToolRegistry()
+	reg := setupRegistry(t)
 	assert.Equal(t, 2, len(strings.Split(reg.AvailableTools(), ",")))
 	reg.Register(tools.Tool{
 		Name:        "test",
