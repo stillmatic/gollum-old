@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -16,8 +15,8 @@ Usage: wikipedia <term>	`,
 	Run: RunWikipedia,
 }
 
-// WikipediaResult is the result of a Wikipedia search
-type WikipediaResult struct {
+// wikipediaResult is the result of a Wikipedia search
+type wikipediaSearchResult struct {
 	Batchcomplete string `json:"batchcomplete"`
 	Continue      struct {
 		Sroffset int    `json:"sroffset"`
@@ -41,10 +40,29 @@ type WikipediaResult struct {
 	} `json:"query"`
 }
 
+type wikiExtractResult struct {
+	Batchcomplete bool `json:"batchcomplete"`
+	Query         struct {
+		Normalized []struct {
+			From string `json:"from"`
+			To   string `json:"to"`
+		} `json:"normalized"`
+		Pages []wikiPageResult `json:"pages"`
+	} `json:"query"`
+}
+
+type wikiPageResult struct {
+	Pageid  int    `json:"pageid"`
+	Ns      int    `json:"ns"`
+	Title   string `json:"title"`
+	Extract string `json:"extract"`
+}
+
 // RunWikipedia queries Wikipedia for the given search term and returns the
-// snippet of the first result
+// summary of the first result
 func RunWikipedia(arg string) (string, error) {
-	var result WikipediaResult
+	// search for the term
+	var result wikipediaSearchResult
 	queryParams := url.Values{
 		"action":   []string{"query"},
 		"list":     []string{"search"},
@@ -52,7 +70,7 @@ func RunWikipedia(arg string) (string, error) {
 		"format":   []string{"json"},
 		"srliimit": []string{"1"},
 	}
-	resp, err := http.Get("http://en.wikipedia.org/w/api.php?" + queryParams.Encode())
+	resp, err := http.Get("https://en.wikipedia.org/w/api.php?" + queryParams.Encode())
 	if err != nil {
 		return "", err
 	}
@@ -63,8 +81,31 @@ func RunWikipedia(arg string) (string, error) {
 	if len(result.Query.Search) == 0 {
 		return "", errors.New("no results")
 	}
-	snippet := result.Query.Search[0].Snippet
-	snippet = strings.Replace(snippet, "<span class=\"searchmatch\">", "", -1)
-	snippet = strings.Replace(snippet, "</span>", "", -1)
-	return snippet, nil
+	// get the extract for the first result
+	pageTitle := result.Query.Search[0].Title
+	queryParams = url.Values{
+		"action":        []string{"query"},
+		"prop":          []string{"extracts"},
+		"exsentences":   []string{"6"},
+		"exlimit":       []string{"1"},
+		"titles":        []string{pageTitle},
+		"explaintext":   []string{"1"},
+		"formatversion": []string{"2"},
+		"format":        []string{"json"},
+	}
+	resp, err = http.Get("https://en.wikipedia.org/w/api.php?" + queryParams.Encode())
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	var extractResult wikiExtractResult
+	if err := json.NewDecoder(resp.Body).Decode(&extractResult); err != nil {
+		return "", err
+	}
+
+	// returns first page
+	for _, page := range extractResult.Query.Pages {
+		return page.Extract, nil
+	}
+	return "", errors.New("no results")
 }
