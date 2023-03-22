@@ -31,6 +31,7 @@ type ReactAgent struct {
 	MaxTurns      int
 	MaxTokens     int
 	Model         string
+	InitialPrompt string
 }
 
 type ReactAgentOption func(*ReactAgent)
@@ -73,6 +74,12 @@ func WithStore(store store.Store) ReactAgentOption {
 	}
 }
 
+func WithInitialPrompt(prompt string) ReactAgentOption {
+	return func(a *ReactAgent) {
+		a.InitialPrompt = prompt
+	}
+}
+
 // NewReactAgent creates a new ReactAgent with the given client and tool registry.
 func NewReactAgent(client gpt3.Client, registry *tools.ToolRegistry) *ReactAgent {
 	return &ReactAgent{
@@ -83,6 +90,7 @@ func NewReactAgent(client gpt3.Client, registry *tools.ToolRegistry) *ReactAgent
 		Temperature:   0.0,
 		MaxTokens:     256,
 		Model:         gpt3.GPT3Dot5Turbo,
+		InitialPrompt: initialPrompt,
 	}
 }
 
@@ -97,7 +105,7 @@ func NewReactAgentWithOpts(client gpt3.Client, opts ...ReactAgentOption) *ReactA
 
 func (a *ReactAgent) GetPrompt() string {
 	sb := &strings.Builder{}
-	sb.WriteString(initialPrompt)
+	sb.WriteString(a.InitialPrompt)
 	sb.WriteString(a.Registry.GetPrompt())
 	return sb.String()
 }
