@@ -65,8 +65,10 @@ func setupSQL(t *testing.T) tools.Tool {
 func TestWikipedia(t *testing.T) {
 	r := setupAgent(t)
 	r.NewConversation(testConvoName)
+	convo, err := r.Conversations.Get(testConvoName)
+	assert.NoError(t, err)
 	ctx := context.Background()
-	err := r.Speak(ctx, testConvoName, "Question: What does England share borders with?")
+	err = r.Speak(ctx, testConvoName, "Question: What does England share borders with?", convo.OnDataPrint)
 	assert.NoError(t, err)
 }
 
@@ -74,7 +76,7 @@ func TestCalculator(t *testing.T) {
 	r := setupAgent(t)
 	r.NewConversation(testConvoName)
 	ctx := context.Background()
-	err := r.Speak(ctx, testConvoName, "Question: What is 3 squared?")
+	err = r.Speak(ctx, testConvoName, "Question: What is 3 squared?", convo.OnDataPrint)
 	assert.NoError(t, err)
 }
 
@@ -83,7 +85,8 @@ func TestSQL(t *testing.T) {
 	sqlTool := setupSQL(t)
 	r.Registry.Register(sqlTool)
 	r.NewConversation(testConvoName)
+	convo, err := r.Conversations.Get(testConvoName)
 	ctx := context.Background()
-	err := r.Speak(ctx, testConvoName, "Question: How many customers have ordered anything?")
+	err = r.Speak(ctx, testConvoName, "Question: How many customers have ordered anything?", convo.OnDataPrint)
 	assert.NoError(t, err)
 }

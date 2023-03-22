@@ -27,7 +27,7 @@ type ReactAgent struct {
 	Client        gpt3.Client
 	Registry      *tools.ToolRegistry
 	Conversations store.Store
-	Temperature   float64
+	Temperature   *float32
 	MaxTurns      int
 	MaxTokens     int
 	Model         string
@@ -50,7 +50,7 @@ func WithTools(tools ...tools.Tool) ReactAgentOption {
 	}
 }
 
-func WithTemperature(temperature float64) ReactAgentOption {
+func WithTemperature(temperature *float32) ReactAgentOption {
 	return func(a *ReactAgent) {
 		a.Temperature = temperature
 	}
@@ -87,7 +87,6 @@ func NewReactAgent(client gpt3.Client, registry *tools.ToolRegistry) *ReactAgent
 		Registry:      registry,
 		Conversations: store.NewMemoryStore(),
 		MaxTurns:      10,
-		Temperature:   0.0,
 		MaxTokens:     256,
 		Model:         gpt3.GPT3Dot5Turbo,
 		InitialPrompt: initialPrompt,
@@ -123,7 +122,7 @@ func (a *ReactAgent) NewConversation(name string) {
 	a.Conversations.Set(name, conv)
 }
 
-func (a *ReactAgent) Speak(ctx context.Context, conversationName string, prompt string) error {
+func (a *ReactAgent) Speak(ctx context.Context, conversationName string, prompt string, onData func(data *gpt3.ChatCompletionStreamResponse)) error {
 	conv, err := a.Conversations.Get(conversationName)
 	if err != nil {
 		return errors.Wrap(err, "failed to get conversation")
@@ -140,7 +139,7 @@ func (a *ReactAgent) Speak(ctx context.Context, conversationName string, prompt 
 			fmt.Println("Max turns reached")
 			break
 		}
-		done, err := a.speak(ctx, conv)
+		done, err := a.speak(ctx, conv, onData)
 		if err != nil {
 			return err
 		}
@@ -151,14 +150,14 @@ func (a *ReactAgent) Speak(ctx context.Context, conversationName string, prompt 
 	return nil
 }
 
-func (a *ReactAgent) speak(ctx context.Context, conv *conversation.Conversation) (bool, error) {
+func (a *ReactAgent) speak(ctx context.Context, conv *conversation.Conversation, onData func(data *gpt3.ChatCompletionStreamResponse)) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	err := a.Client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
 		Model:       a.Model,
 		Messages:    conv.Messages,
 		MaxTokens:   a.MaxTokens,
-		Temperature: float32(a.Temperature),
+		Temperature: a.Temperature,
 		Stop:        []string{"PAUSE"},
 	}, conv.OnDataPrint)
 	if err != nil {
